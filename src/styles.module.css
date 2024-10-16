@@ -1,0 +1,54 @@
+:root {
+  --color-white: white;
+  --color-primary: darkslategrey;
+  --color-secondary: lightslategray;
+}
+
+.gridContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 960px;
+  border: 1px solid var(--color-primary);
+}
+
+.gridItem {
+  display: block;
+  flex-basis: calc(100% / var(--grid-size));
+  aspect-ratio: 1;
+  background-color: var(--color-white);
+  transition: all 100ms ease-out;
+  cursor: crosshair;
+}
+
+.gridItemActive {
+  background-color: var(--color-primary);
+}
+
+.controlsContainer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.clearButton,
+.gridSizeButton {
+  display: block;
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-white);
+  color: var(--color-primary);
+  padding: 0.5rem 1.5rem;
+  margin: 0;
+  transition: all 200ms ease-out;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+}
