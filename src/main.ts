@@ -59,7 +59,8 @@ function createGrid(size: number, grid: HTMLElement): void {
 function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
   gridItems.forEach((gridItem: Element) => {
     gridItem.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+      const mouseEvent = e as MouseEvent;
+      mouseEvent.preventDefault();
       isMouseDown = true;
       gridItem.classList.toggle(styles.gridItemActive);
     });
@@ -77,6 +78,30 @@ function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
     gridItem.addEventListener("mouseleave", () => {
       if (isMouseDown) {
         gridItem.classList.add(styles.gridItemActive);
+      }
+    });
+
+    gridItem.addEventListener("touchstart", (e) => {
+      const touchEvent = e as TouchEvent;
+      touchEvent.preventDefault();
+      isMouseDown = true;
+      gridItem.classList.toggle(styles.gridItemActive);
+    });
+
+    gridItem.addEventListener("touchend", () => {
+      isMouseDown = false;
+    });
+
+    gridItem.addEventListener("touchmove", (e) => {
+      const touchEvent = e as TouchEvent;
+      touchEvent.preventDefault();
+      const touch = touchEvent.touches[0];
+      const target = document.elementFromPoint(
+        touch.clientX,
+        touch.clientY
+      ) as HTMLElement;
+      if (target && target.hasAttribute("data-nid")) {
+        target.classList.add(styles.gridItemActive);
       }
     });
   });
