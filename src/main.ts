@@ -1,4 +1,5 @@
 import styles from "./styles.module.css";
+import { compress, decompress } from "./zlib";
 
 const app = document.getElementById("app")!;
 const DEFAULT_GRID_SIZE = 64;
@@ -227,6 +228,7 @@ function addSaveButtonEventListeners(button: HTMLElement): void {
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set("s", String(gridSize));
     currentUrl.searchParams.set("grid", activeGridItems);
+    navigator.clipboard.writeText(currentUrl.toString());
     window.history.replaceState({}, "", currentUrl.toString());
   });
 }
@@ -265,7 +267,8 @@ function getActiveGridItems(): string {
 
   // Convert array to comma-separated string and encode it for use as a URL parameter
   const paramString = activeGridItems.join(",");
-  return encodeURIComponent(paramString);
+  const compressed = compress(paramString);
+  return encodeURIComponent(compressed);
 }
 
 /**
@@ -339,7 +342,8 @@ function getGridSizeURLParam(): number {
  */
 function getGridURLParam(): string {
   const params = new URL(window.location.href).searchParams;
-  return params.get("grid") || "";
+  const decompressed = decompress(params.get("grid") || "");
+  return decompressed;
 }
 
 /**
