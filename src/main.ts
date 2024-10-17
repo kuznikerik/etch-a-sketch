@@ -6,13 +6,25 @@ const MIN_GRID_SIZE = 1;
 const MAX_GRID_SIZE = 100;
 let isMouseDown = false;
 
-initializeUI(app, DEFAULT_GRID_SIZE);
+if (!checkValidURLParams()) {
+  initializeUI(app, DEFAULT_GRID_SIZE);
+} else {
+  initializeUI(app, DEFAULT_GRID_SIZE);
+  const gridSize = getGridSizeURLParam();
+  const activeGridItems = getGridURLParam();
+  const arrayActiveGridItems = URLParamStringToArray(activeGridItems);
+  initializeUI(app, gridSize, arrayActiveGridItems);
+}
 
 /**
  * Initialize the user interface elements
  * @param app - The main application container
  */
-function initializeUI(app: HTMLElement, gridSize: number): void {
+function initializeUI(
+  app: HTMLElement,
+  gridSize: number,
+  activeGridItems?: string[]
+): void {
   clearUI(app);
 
   const gridContainer = createGridContainer();
@@ -22,6 +34,10 @@ function initializeUI(app: HTMLElement, gridSize: number): void {
 
   const controls = createControls();
   app.appendChild(controls);
+
+  if (activeGridItems) {
+    paintGrid(activeGridItems);
+  }
 }
 
 /**
@@ -121,6 +137,9 @@ function createControls(): HTMLElement {
   const gridSizeChangeButton = createGridSizeChangeButton();
   controlsContainer.appendChild(gridSizeChangeButton);
 
+  const saveButton = createSaveButton();
+  controlsContainer.appendChild(saveButton);
+
   return controlsContainer;
 }
 
@@ -145,6 +164,18 @@ function createGridSizeChangeButton(): HTMLElement {
   button.classList.add(styles.gridSizeButton);
   button.textContent = "Change grid size";
   addGridSizeButtonEventListeners(button);
+  return button;
+}
+
+/**
+ * Create a save button
+ * @returns a save button
+ */
+function createSaveButton(): HTMLElement {
+  const button = document.createElement("button");
+  button.classList.add(styles.saveButton);
+  button.textContent = "Share";
+  addSaveButtonEventListeners(button);
   return button;
 }
 
@@ -185,6 +216,59 @@ function addGridSizeButtonEventListeners(button: HTMLElement): void {
 }
 
 /**
+ * Add an Event Listener to the save button
+ * @param button - The save button
+ */
+function addSaveButtonEventListeners(button: HTMLElement): void {
+  button.addEventListener("click", () => {
+    const gridSize = getGridSize();
+    const activeGridItems = getActiveGridItems();
+    if (!gridSize || !activeGridItems) return;
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("s", String(gridSize));
+    currentUrl.searchParams.set("grid", activeGridItems);
+    window.history.replaceState({}, "", currentUrl.toString());
+  });
+}
+
+/**
+ * Gets the grid size
+ * @param number - Returns the grid size
+ */
+function getGridSize(): number {
+  const grid = document.getElementById("grid");
+  if (!grid) return 0;
+  const numOfGridItems = grid.childElementCount;
+  return Math.sqrt(numOfGridItems);
+}
+
+/**
+ * Gets the active grid items
+ * @returns {string} - Returns a URL-encoded string of active grid item IDs, or an empty string if no grid items
+ */
+function getActiveGridItems(): string {
+  const grid = document.getElementById("grid");
+  if (!grid) return "";
+
+  const activeGridItems: number[] = [];
+
+  for (const child of grid.children) {
+    if (child.classList.length > 1) {
+      const dataNid = child.getAttribute("data-nid");
+      if (dataNid) {
+        activeGridItems.push(Number(dataNid));
+      }
+    }
+  }
+
+  if (activeGridItems.length === 0) return ""; // Return an empty string if no active items
+
+  // Convert array to comma-separated string and encode it for use as a URL parameter
+  const paramString = activeGridItems.join(",");
+  return encodeURIComponent(paramString);
+}
+
+/**
  * Remove active classes from all grid items in the grid
  */
 function clearGrid(): void {
@@ -196,6 +280,8 @@ function clearGrid(): void {
   gridItems.forEach((gridItem: Element) => {
     gridItem.classList.remove(styles.gridItemActive);
   });
+
+  removeAllURLParams();
 }
 
 /**
@@ -205,4 +291,72 @@ function clearGrid(): void {
 function clearUI(app: HTMLElement): void {
   const existingGrid = document.getElementById("grid");
   if (existingGrid) app.innerHTML = "";
+}
+
+/**
+ * Loop through the grid and add active classes
+ * @param app - The main application container
+ */
+function paintGrid(activeGridItems: string[]): void {
+  if (activeGridItems.length === 0) return;
+
+  const grid = document.getElementById("grid");
+  if (!grid) return;
+
+  const gridItems = grid.querySelectorAll("div[data-nid]");
+  for (const gridItem of gridItems) {
+    const dataNid = gridItem.getAttribute("data-nid");
+
+    if (dataNid && activeGridItems.includes(dataNid)) {
+      gridItem.classList.add(styles.gridItemActive);
+    }
+  }
+}
+
+/**
+ * Check if the URL has valid URL Search Params
+ * @returns boolean - if the URL has valid URL Search Params
+ */
+function checkValidURLParams(): boolean {
+  const params = new URL(window.location.href).searchParams;
+  const size = params.get("s");
+  const grid = params.get("grid");
+  return Boolean(size && grid);
+}
+
+/**
+ * Get the 's' (size) URL parameter
+ * @returns {number} - The grid size as a number, or 0 if not found
+ */
+function getGridSizeURLParam(): number {
+  const params = new URL(window.location.href).searchParams;
+  return Number(params.get("s")) || 0;
+}
+
+/**
+ * Get the 'grid' URL parameter
+ * @returns {string} - The grid size as a string, or an empty string if not found
+ */
+function getGridURLParam(): string {
+  const params = new URL(window.location.href).searchParams;
+  return params.get("grid") || "";
+}
+
+/**
+ * Transform string from URL Param to Array
+ * @returns array of numbers
+ */
+function URLParamStringToArray(string: string): string[] {
+  const decodedString = decodeURIComponent(string);
+  const gridArray = decodedString.split(",").filter((item) => item !== "");
+  return gridArray;
+}
+
+/**
+ * Remove all URL parameters from the current URL
+ */
+function removeAllURLParams(): void {
+  const currentUrl = new URL(window.location.href);
+  currentUrl.search = "";
+  window.history.replaceState({}, "", currentUrl.toString());
 }
