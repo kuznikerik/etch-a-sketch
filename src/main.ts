@@ -6,6 +6,30 @@ const DEFAULT_GRID_SIZE = 64;
 const MIN_GRID_SIZE = 1;
 const MAX_GRID_SIZE = 100;
 let isMouseDown = false;
+let isActiveColorRandom = false;
+const DEFAULT_COLOR = "darkslategrey";
+const COLORS: string[] = [
+  "#232136",
+  "#393552",
+  "#3E8FB0",
+  "#6E6A86",
+  "#3E8FB0",
+  "#EA9A97",
+  "#9CCFD8",
+  "#C4A7E7",
+  "#EB6F92",
+  "#E0DEF4",
+  "#F6C177",
+  "#E0DEF4",
+  "#EA9A97",
+  "#E0DEF4",
+  "#9CCFD8",
+  "#C4A7E7",
+  "#EB6F92",
+  "#232136",
+  "#E0DEF4",
+  "#F6C177",
+];
 
 if (!checkValidURLParams()) {
   initializeUI(app, DEFAULT_GRID_SIZE);
@@ -87,15 +111,11 @@ function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
     });
 
     gridItem.addEventListener("mouseenter", () => {
-      if (isMouseDown) {
-        gridItem.classList.add(styles.gridItemActive);
-      }
+      handleActiveState(gridItem);
     });
 
     gridItem.addEventListener("mouseleave", () => {
-      if (isMouseDown) {
-        gridItem.classList.add(styles.gridItemActive);
-      }
+      handleActiveState(gridItem);
     });
 
     gridItem.addEventListener("touchstart", (e) => {
@@ -141,6 +161,9 @@ function createControls(): HTMLElement {
   const saveButton = createSaveButton();
   controlsContainer.appendChild(saveButton);
 
+  const colorButton = createColorButton();
+  controlsContainer.appendChild(colorButton);
+
   return controlsContainer;
 }
 
@@ -150,7 +173,7 @@ function createControls(): HTMLElement {
  */
 function createClearButton(): HTMLElement {
   const button = document.createElement("button");
-  button.classList.add(styles.clearButton);
+  button.classList.add(styles.button);
   button.textContent = "Clear";
   addClearButtonEventListeners(button);
   return button;
@@ -162,7 +185,7 @@ function createClearButton(): HTMLElement {
  */
 function createGridSizeChangeButton(): HTMLElement {
   const button = document.createElement("button");
-  button.classList.add(styles.gridSizeButton);
+  button.classList.add(styles.button);
   button.textContent = "Change grid size";
   addGridSizeButtonEventListeners(button);
   return button;
@@ -174,9 +197,21 @@ function createGridSizeChangeButton(): HTMLElement {
  */
 function createSaveButton(): HTMLElement {
   const button = document.createElement("button");
-  button.classList.add(styles.saveButton);
+  button.classList.add(styles.button);
   button.textContent = "Share";
   addSaveButtonEventListeners(button);
+  return button;
+}
+
+/**
+ * Create a color button
+ * @returns a color button
+ */
+function createColorButton(): HTMLElement {
+  const button = document.createElement("button");
+  button.classList.add(styles.button);
+  button.textContent = "Color";
+  addColorButtonEventListeners(button);
   return button;
 }
 
@@ -230,6 +265,17 @@ function addSaveButtonEventListeners(button: HTMLElement): void {
     currentUrl.searchParams.set("grid", activeGridItems);
     navigator.clipboard.writeText(currentUrl.toString());
     window.history.replaceState({}, "", currentUrl.toString());
+  });
+}
+
+/**
+ * Add an Event Listener to the color button
+ * @param button - The save button
+ */
+function addColorButtonEventListeners(button: HTMLElement): void {
+  button.addEventListener("click", () => {
+    isActiveColorRandom = !isActiveColorRandom;
+    button.classList.toggle(styles.buttonActive);
   });
 }
 
@@ -363,4 +409,20 @@ function removeAllURLParams(): void {
   const currentUrl = new URL(window.location.href);
   currentUrl.search = "";
   window.history.replaceState({}, "", currentUrl.toString());
+}
+
+function handleActiveState(gridItem: Element): void {
+  if (!isMouseDown) return;
+  gridItem.classList.add(styles.gridItemActive);
+
+  const item = gridItem as HTMLElement;
+  if (isActiveColorRandom) {
+    item.style.setProperty("--active-color", getRandomColor(COLORS));
+  } else {
+    item.style.setProperty("--active-color", DEFAULT_COLOR);
+  }
+}
+
+function getRandomColor(colors: string[]): string {
+  return colors[Math.floor(Math.random() * colors.length)];
 }
