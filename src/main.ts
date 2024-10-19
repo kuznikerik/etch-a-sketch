@@ -2,7 +2,7 @@ import styles from "./styles.module.css";
 import { compress, decompress } from "./zlib";
 
 const app = document.getElementById("app")!;
-const DEFAULT_GRID_SIZE = 64;
+const DEFAULT_GRID_SIZE = 16;
 const MIN_GRID_SIZE = 1;
 const MAX_GRID_SIZE = 100;
 let isMouseDown = false;
@@ -48,7 +48,7 @@ if (!checkValidURLParams()) {
 function initializeUI(
   app: HTMLElement,
   gridSize: number,
-  activeGridItems?: string[]
+  activeGridItems?: [string, string][]
 ): void {
   clearUI(app);
 
@@ -103,7 +103,7 @@ function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
       const mouseEvent = e as MouseEvent;
       mouseEvent.preventDefault();
       isMouseDown = true;
-      gridItem.classList.toggle(styles.gridItemActive);
+      handleActiveState(gridItem);
     });
 
     document.addEventListener("mouseup", () => {
@@ -111,18 +111,16 @@ function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
     });
 
     gridItem.addEventListener("mouseenter", () => {
-      handleActiveState(gridItem);
-    });
-
-    gridItem.addEventListener("mouseleave", () => {
-      handleActiveState(gridItem);
+      if (isMouseDown) {
+        handleActiveState(gridItem);
+      }
     });
 
     gridItem.addEventListener("touchstart", (e) => {
       const touchEvent = e as TouchEvent;
       touchEvent.preventDefault();
       isMouseDown = true;
-      gridItem.classList.toggle(styles.gridItemActive);
+      handleActiveState(gridItem);
     });
 
     gridItem.addEventListener("touchend", () => {
@@ -138,7 +136,7 @@ function addGridItemEventListeners(gridItems: NodeListOf<Element>): void {
         touch.clientY
       ) as HTMLElement;
       if (target && target.hasAttribute("data-nid")) {
-        target.classList.add(styles.gridItemActive);
+        handleActiveState(target);
       }
     });
   });
@@ -155,14 +153,14 @@ function createControls(): HTMLElement {
   const clearButton = createClearButton();
   controlsContainer.appendChild(clearButton);
 
+  const colorButton = createColorButton();
+  controlsContainer.appendChild(colorButton);
+
   const gridSizeChangeButton = createGridSizeChangeButton();
   controlsContainer.appendChild(gridSizeChangeButton);
 
-  const saveButton = createSaveButton();
+  const saveButton = createShareButton();
   controlsContainer.appendChild(saveButton);
-
-  const colorButton = createColorButton();
-  controlsContainer.appendChild(colorButton);
 
   return controlsContainer;
 }
@@ -195,11 +193,11 @@ function createGridSizeChangeButton(): HTMLElement {
  * Create a save button
  * @returns a save button
  */
-function createSaveButton(): HTMLElement {
+function createShareButton(): HTMLElement {
   const button = document.createElement("button");
   button.classList.add(styles.button);
   button.textContent = "Share";
-  addSaveButtonEventListeners(button);
+  addShareButtonEventListeners(button);
   return button;
 }
 
@@ -255,15 +253,18 @@ function addGridSizeButtonEventListeners(button: HTMLElement): void {
  * Add an Event Listener to the save button
  * @param button - The save button
  */
-function addSaveButtonEventListeners(button: HTMLElement): void {
+function addShareButtonEventListeners(button: HTMLElement): void {
   button.addEventListener("click", () => {
     const gridSize = getGridSize();
     const activeGridItems = getActiveGridItems();
     if (!gridSize || !activeGridItems) return;
+
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set("s", String(gridSize));
     currentUrl.searchParams.set("grid", activeGridItems);
+
     navigator.clipboard.writeText(currentUrl.toString());
+
     window.history.replaceState({}, "", currentUrl.toString());
   });
 }
@@ -298,13 +299,17 @@ function getActiveGridItems(): string {
   const grid = document.getElementById("grid");
   if (!grid) return "";
 
-  const activeGridItems: number[] = [];
+  const activeGridItems: string[][] = [];
 
   for (const child of grid.children) {
     if (child.classList.length > 1) {
       const dataNid = child.getAttribute("data-nid");
-      if (dataNid) {
-        activeGridItems.push(Number(dataNid));
+      const dataColor = child.getAttribute("style");
+      if (dataNid && dataColor) {
+        const color = dataColor.split(":")[1].trim().replace(";", "");
+        const data: string[] = [];
+        data.push(dataNid, color);
+        activeGridItems.push(data);
       }
     }
   }
@@ -346,7 +351,7 @@ function clearUI(app: HTMLElement): void {
  * Loop through the grid and add active classes
  * @param app - The main application container
  */
-function paintGrid(activeGridItems: string[]): void {
+function paintGrid(activeGridItems: [string, string][]): void {
   if (activeGridItems.length === 0) return;
 
   const grid = document.getElementById("grid");
@@ -355,9 +360,16 @@ function paintGrid(activeGridItems: string[]): void {
   const gridItems = grid.querySelectorAll("div[data-nid]");
   for (const gridItem of gridItems) {
     const dataNid = gridItem.getAttribute("data-nid");
+    const nid = Number(dataNid);
 
-    if (dataNid && activeGridItems.includes(dataNid)) {
-      gridItem.classList.add(styles.gridItemActive);
+    for (let i = 0; i < activeGridItems.length; i++) {
+      const activeGridItem = activeGridItems[i];
+      const activeGridItemNid = Number(activeGridItem[0]);
+      const activeGridItemColor = activeGridItem[1];
+
+      if (activeGridItemNid === nid) {
+        setColor(gridItem, activeGridItemColor);
+      }
     }
   }
 }
@@ -384,7 +396,7 @@ function getGridSizeURLParam(): number {
 
 /**
  * Get the 'grid' URL parameter
- * @returns {string} - The grid size as a string, or an empty string if not found
+ * @returns {string} - The grid URL param as a string, or an empty string if not found
  */
 function getGridURLParam(): string {
   const params = new URL(window.location.href).searchParams;
@@ -394,12 +406,21 @@ function getGridURLParam(): string {
 
 /**
  * Transform string from URL Param to Array
- * @returns array of numbers
+ * @param string - URL Param
+ * @returns array of numbers as strings
  */
-function URLParamStringToArray(string: string): string[] {
+function URLParamStringToArray(string: string): [string, string][] {
   const decodedString = decodeURIComponent(string);
-  const gridArray = decodedString.split(",").filter((item) => item !== "");
-  return gridArray;
+  const arraySplit = decodedString.split(",").filter((item) => item !== "");
+  const arrayNidColor: [string, string][] = [];
+
+  for (let i = 0; i < arraySplit.length; i += 2) {
+    if (arraySplit[i + 1] !== undefined) {
+      arrayNidColor.push([arraySplit[i], arraySplit[i + 1]]);
+    }
+  }
+
+  return arrayNidColor;
 }
 
 /**
@@ -411,18 +432,33 @@ function removeAllURLParams(): void {
   window.history.replaceState({}, "", currentUrl.toString());
 }
 
+/**
+ * Set active class and color
+ * @param gridItem - a grid item
+ */
 function handleActiveState(gridItem: Element): void {
   if (!isMouseDown) return;
-  gridItem.classList.add(styles.gridItemActive);
-
-  const item = gridItem as HTMLElement;
-  if (isActiveColorRandom) {
-    item.style.setProperty("--active-color", getRandomColor(COLORS));
-  } else {
-    item.style.setProperty("--active-color", DEFAULT_COLOR);
-  }
+  isActiveColorRandom
+    ? setColor(gridItem, getRandomColor(COLORS))
+    : setColor(gridItem, DEFAULT_COLOR);
 }
 
+/**
+ * Returns a random item from the string[] colors
+ * @param colors - An array of colors (HEX codes as strings)
+ * @returns HEX code as a string
+ */
 function getRandomColor(colors: string[]): string {
   return colors[Math.floor(Math.random() * colors.length)];
+}
+
+/**
+ * Set active class and color of a grid item
+ * @param gridItem - a grid item
+ * @param color - grid item's color
+ */
+function setColor(gridItem: Element, color: string): void {
+  gridItem.classList.add(styles.gridItemActive);
+  const item = gridItem as HTMLElement;
+  item.style.setProperty("--active-color", color);
 }
