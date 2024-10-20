@@ -3,7 +3,7 @@ import styles from "./styles.module.css";
 import { compress, decompress } from "./zlib";
 
 const app = document.getElementById("app")!;
-const DEFAULT_GRID_SIZE = 24;
+const DEFAULT_GRID_SIZE = 32;
 const MIN_GRID_SIZE = 1;
 const MAX_GRID_SIZE = 100;
 let isMouseDown = false;
@@ -211,6 +211,7 @@ function createColorButton(): HTMLElement {
   button.classList.add(styles.button);
   button.textContent = "Color";
   addColorButtonEventListeners(button);
+  if (isActiveColorRandom) button.classList.add(styles.buttonActive);
   return button;
 }
 
