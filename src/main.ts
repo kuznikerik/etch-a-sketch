@@ -1,8 +1,9 @@
+import Notification from "./Notification/Notification";
 import styles from "./styles.module.css";
 import { compress, decompress } from "./zlib";
 
 const app = document.getElementById("app")!;
-const DEFAULT_GRID_SIZE = 16;
+const DEFAULT_GRID_SIZE = 24;
 const MIN_GRID_SIZE = 1;
 const MAX_GRID_SIZE = 100;
 let isMouseDown = false;
@@ -238,14 +239,20 @@ function addGridSizeButtonEventListeners(button: HTMLElement): void {
       gridSize < MIN_GRID_SIZE ||
       gridSize > MAX_GRID_SIZE
     ) {
-      alert(
-        "Enter a valid grid size! Grid will be reset to it's default size."
+      const notification = new Notification(
+        "Enter a valid grid size! Grid will be reset to it's default size.",
+        3000,
+        "error"
       );
+      notification.show();
       initializeUI(app, DEFAULT_GRID_SIZE);
       return;
     }
 
     initializeUI(app, gridSize);
+
+    const notification = new Notification("Grid size changed", 3000, "success");
+    notification.show();
   });
 }
 
@@ -257,7 +264,12 @@ function addShareButtonEventListeners(button: HTMLElement): void {
   button.addEventListener("click", () => {
     const gridSize = getGridSize();
     const activeGridItems = getActiveGridItems();
-    if (!gridSize || !activeGridItems) return;
+
+    if (!gridSize || !activeGridItems) {
+      const notification = new Notification("Nothing to share", 3000, "alert");
+      notification.show();
+      return;
+    }
 
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set("s", String(gridSize));
@@ -266,6 +278,9 @@ function addShareButtonEventListeners(button: HTMLElement): void {
     navigator.clipboard.writeText(currentUrl.toString());
 
     window.history.replaceState({}, "", currentUrl.toString());
+
+    const notification = new Notification("Link copied", 3000, "success");
+    notification.show();
   });
 }
 
@@ -277,6 +292,11 @@ function addColorButtonEventListeners(button: HTMLElement): void {
   button.addEventListener("click", () => {
     isActiveColorRandom = !isActiveColorRandom;
     button.classList.toggle(styles.buttonActive);
+    const notificationMessage = `Color ${
+      isActiveColorRandom ? "enabled" : "disabled"
+    }`;
+    const notification = new Notification(notificationMessage, 3000, "success");
+    notification.show();
   });
 }
 
@@ -336,6 +356,9 @@ function clearGrid(): void {
   });
 
   removeAllURLParams();
+
+  const notification = new Notification("Grid cleared", 30000, "success");
+  notification.show();
 }
 
 /**
@@ -355,7 +378,15 @@ function paintGrid(activeGridItems: [string, string][]): void {
   if (activeGridItems.length === 0) return;
 
   const grid = document.getElementById("grid");
-  if (!grid) return;
+  if (!grid) {
+    const notification = new Notification(
+      "Something went wrong",
+      3000,
+      "error"
+    );
+    notification.show();
+    return;
+  }
 
   const gridItems = grid.querySelectorAll("div[data-nid]");
   for (const gridItem of gridItems) {
