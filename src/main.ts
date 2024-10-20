@@ -357,7 +357,7 @@ function clearGrid(): void {
 
   removeAllURLParams();
 
-  const notification = new Notification("Grid cleared", 30000, "success");
+  const notification = new Notification("Grid cleared", 3000, "success");
   notification.show();
 }
 
